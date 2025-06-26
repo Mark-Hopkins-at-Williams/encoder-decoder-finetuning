@@ -55,16 +55,3 @@ def load_permutation_map(filename):
             obj.inverse_dict = {int(i):s for i, s in value["inverse dictionary"].items()}
             data[key] = obj
         return data
-
-        
-        
-        
-
-
-
-pmap = {"eng_Latn": create_random_permutation_with_fixed_points(8, [0, 1, 2, 7]),
-        "fra_Latn": create_random_permutation_with_fixed_points(8, [0, 1, 2, 7])}
-save_permutation_map(pmap, 'foo.json')
-pmap2 = load_permutation_map('foo.json')
-for i in range(8):
-    print(f"{i} => {pmap2["eng_Latn"](i)}")
