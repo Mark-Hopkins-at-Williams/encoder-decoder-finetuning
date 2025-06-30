@@ -1,3 +1,5 @@
 __pycache__
+configs/
+data/
 experiments/
 logs/

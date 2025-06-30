@@ -140,24 +140,3 @@ class TokenizedMixtureOfBitexts:
         lang2_tokenized = self._tokenize(lang2_sents, lang2_code, alt_pad_token=-100)
         return lang1_tokenized, lang2_tokenized, lang1_code, lang2_code
 
-
-if __name__ == "__main__":
-    config = {
-        "corpora": [
-            {
-                "code": "eng_Latn",
-                "filename": "test_files/lang1.txt",
-                "permutation": 0,
-            },
-            {
-                "code": "fra_Latn",
-                "filename": "test_files/lang2.txt",
-                "permutation": 1,
-            },
-            {
-                "code": "deu_Latn",
-                "filename": "test_files/lang3.txt",
-                "permutation": 1,
-            },
-        ]
-    }

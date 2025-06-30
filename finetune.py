@@ -272,6 +272,61 @@ def main():
         json.dump(scores, writer)
     print("Evaluation complete.")    
 
+    # test_mix = MixtureOfBitexts.create_from_files(
+    #     {
+    #         "pol_Latn": "data/test.pl",
+    #         "deu_Latn": "data/test.de",
+    #         "eng_Latn": "data/test.en",
+    #     },
+    #     [("eng_Latn", "pol_Latn"), ("eng_Latn", "deu_Latn")],
+    #     batch_size=32,
+    #     only_once_thru=True,
+    # )
+    # tokenized_test = TokenizedMixtureOfBitexts(test_mix, tokenizer, max_length=128)
+    # model = AutoModelForSeq2SeqLM.from_pretrained(model_dir)
+    # if USE_CUDA:
+    #     model.cuda()
+    #translations = translate_tokenized_mixture_of_bitexts(
+    #    tokenized_test, model, tokenizer, pmap
+    #)
+    #with open(Path(model_dir) / "translations.json", "w") as writer:
+    #    json.dump(translations, writer)
+    #print("Translations complete.")
+
+    test_data = MixtureOfBitexts.create_from_files(
+        {
+            "fra_Latn": "data/test.fr",
+            "deu_Latn": "data/test.de",
+            "eng_Latn": "data/test.en",
+        },
+        [("eng_Latn", "fra_Latn"), ("eng_Latn", "deu_Latn")],
+        batch_size=32,
+        only_once_thru=True,
+    )
+    references = dict()
+    batch = test_data.next_batch()
+    while batch is not None:
+        _, tgt, src_code, tgt_code = batch
+        key = "->".join([src_code, tgt_code])
+        if key not in references:
+            references[key] = []
+        references[key].extend(tgt)
+        batch = test_data.next_batch()
+    with open(Path(model_dir) / "references.json", "w") as writer:
+        json.dump(references, writer)
+    print("References complete.")
+
+
+    #scores = dict()
+    #for key in translations:
+    #    scores[key] = evaluate_translations(
+    #        translations[key], 
+    #        references[key]
+    #    )
+    #with open(Path(model_dir) / "scores.json", "w") as writer:
+    #    json.dump(scores, writer)
+    #print("Evaluation complete.")    
+
 
 if __name__ == "__main__":
     main()

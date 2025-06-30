@@ -58,3 +58,6 @@ if __name__ == "__main__":
         print(f"{i} => {q(i)}")
     for i in range(8):
         print(f"{i} => {q_inv(i)}")
+        
+
+
