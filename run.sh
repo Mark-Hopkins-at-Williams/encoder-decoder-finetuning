@@ -6,4 +6,4 @@
 #SBATCH -o logs/log_%j.out  
 #SBATCH -e logs/log_%j.err
 #SBATCH --gres=gpu:1
-python finetune.py --model_dir exp --steps 60000
+python permutations.py --model_dir exp --steps 60000
