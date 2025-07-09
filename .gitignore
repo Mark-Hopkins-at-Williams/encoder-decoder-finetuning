@@ -1,2 +1,6 @@
 __pycache__
+configs/
+data/
+examples/model-*
+experiments/
 logs/
