@@ -1,0 +1,46 @@
+{
+    "model_dir": "examples/model-example1",
+    "finetuning_parameters": {
+        "base_model": "facebook/nllb-200-distilled-600M",
+        "batch_size": 32,
+        "num_steps": 2000
+    },
+    "corpora": {
+        "eng_Latn": {
+            "train": "examples/data/train.en",
+            "dev": "examples/data/dev.en",
+            "test": "examples/data/test.en",
+            "permutation": 0
+        },
+        "tsn_Latn": {
+            "train": "examples/data/train.es",
+            "dev": "examples/data/dev.es",
+            "test": "examples/data/test.es",
+            "permutation": 1
+        },
+        "tso_Latn": {
+            "train": "examples/data/train.es",
+            "dev": "examples/data/dev.es",
+            "test": "examples/data/test.es",
+            "permutation": 2
+        }
+    },
+    "bitexts": [
+        {
+            "src": "eng_Latn",
+            "tgt": "tsn_Latn",
+            "train_lines": [
+                0,
+                1024
+            ]
+        },
+        {
+            "src": "eng_Latn",
+            "tgt": "tso_Latn",
+            "train_lines": [
+                1024,
+                2048
+            ]
+        }
+    ]
+}

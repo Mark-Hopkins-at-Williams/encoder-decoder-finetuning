@@ -1,7 +1,5 @@
 import unittest
-from corpora import Bitext, MixtureOfBitexts, TokenizedMixtureOfBitexts
-from finetune import tokenize, prepare_tokenizer_and_model
-from transformers import AutoTokenizer
+from corpora import load_tokenizer, Bitext, MixtureOfBitexts, TokenizedMixtureOfBitexts
 from torch import tensor
 
 
@@ -62,6 +60,7 @@ class TestUtil(unittest.TestCase):
         )
         self.assertIn(batch, [expected1, expected2])
 
+
     def test_mixture_of_bitexts2(self):
         text_files = {
             "lang1": "test_files/lang1.txt",
@@ -69,7 +68,7 @@ class TestUtil(unittest.TestCase):
             "lang3": "test_files/lang3.txt",
         }
         mix = MixtureOfBitexts.create_from_files(
-            text_files, [("lang1", "lang2"), ("lang1", "lang3")], 3
+            text_files, [("lang1", "lang2", None), ("lang1", "lang3", None)], 3
         )
         batch = mix.next_batch()
         expected1 = (
@@ -94,112 +93,270 @@ class TestUtil(unittest.TestCase):
         )
         self.assertIn(batch, [expected1, expected2])
 
-    def test_tokenize(self):
-        text_files = {"lang1": "test_files/lang1.txt", "lang2": "test_files/lang2.txt"}
-        mix = MixtureOfBitexts.create_from_files(text_files, [("lang1", "lang2")], 3)
-        base_model = "facebook/nllb-200-distilled-600M"
-        tokenizer = AutoTokenizer.from_pretrained(base_model)
-        lang1_sents, lang2_sents, lang1, lang2 = mix.next_batch()
-        tokenized = tokenize(lang1_sents, lang1, tokenizer, 100)
-        expected_ids = tensor(
-            [
-                [3, 1617, 7875, 228, 55501, 349, 227879, 248075, 2],
-                [3, 11873, 272, 22665, 9, 28487, 248075, 2, 1],
-                [3, 13710, 18379, 43583, 2299, 248075, 2, 1, 1],
-            ]
+    def test_mixture_of_bitexts3(self):
+        text_files = {
+            "lang1": "test_files/lang1.txt",
+            "lang2": "test_files/lang2.txt",
+            "lang3": "test_files/lang3.txt",
+        }
+        mix = MixtureOfBitexts.create_from_files(
+            text_files,
+            [("lang1", "lang2", None), ("lang1", "lang3", None)],
+            batch_size=5,
+            only_once_thru=True,
         )
-        expected_mask = tensor(
-            [
-                [1, 1, 1, 1, 1, 1, 1, 1, 1],
-                [1, 1, 1, 1, 1, 1, 1, 1, 0],
-                [1, 1, 1, 1, 1, 1, 1, 0, 0],
-            ]
-        )
-        self.assertEqual(tokenized["input_ids"].tolist(), expected_ids.tolist())
-        self.assertEqual(tokenized["attention_mask"].tolist(), expected_mask.tolist())
-        tokens = [
-            tokenizer.convert_ids_to_tokens(seq) for seq in tokenized["input_ids"]
-        ]
-        expected_tokens = [
-            ["<unk>", "▁The", "▁cat", "▁ch", "ased", "▁the", "▁mouse", ".", "</s>"],
-            ["<unk>", "▁She", "▁re", "ads", "▁a", "▁book", ".", "</s>", "<pad>"],
-            ["<unk>", "▁They", "▁play", "▁soc", "cer", ".", "</s>", "<pad>", "<pad>"],
-        ]
-        self.assertEqual(tokens, expected_tokens)
+        counter = 0
+        batch = "not none"
+        while batch is not None:
+            batch = mix.next_batch()
+            if batch is not None:
+                counter += 1
+        self.assertEqual(counter, 8)
         
-    def test_tokenize_alt_pad(self):
-        text_files = {"eng_Latn": "test_files/lang1.txt", "fra_Latn": "test_files/lang2.txt"}
-        mix = MixtureOfBitexts.create_from_files(text_files, [("eng_Latn", "fra_Latn")], 3)
+    def test_mixture_of_bitexts4(self):
+        text_files = {
+            "lang1": "test_files/lang1.txt",
+            "lang2": "test_files/lang2.txt",
+            "lang3": "test_files/lang3.txt",
+        }
+        mix = MixtureOfBitexts.create_from_files(
+            text_files,
+            [("lang1", "lang2", None), ("lang1", "lang3", None)],
+            batch_size=2,
+            only_once_thru=True,
+        )
+        next_batch = "not none"
+        while next_batch is not None:
+            next_batch = mix.next_batch()
+            if next_batch is not None:
+                batch = next_batch
+        expected1 = (
+            ("The chef cooked a meal.", "They built a house."),
+            ("Le chef a cuisiné un repas.", "Ils ont construit une maison."),
+            "lang1",
+            "lang2",
+        )
+        expected2 = (
+            ("The chef cooked a meal.", "They built a house."),
+            ("Der Koch hat eine Mahlzeit gekocht.", "Sie haben ein Haus gebaut."),
+            "lang1",
+            "lang3",
+        )
+        self.assertIn(batch, [expected1, expected2])
+
+    def test_mixture_of_bitexts_limited_lines1(self):
+        text_files = {
+            "lang1": "test_files/lang1.txt",
+            "lang2": "test_files/lang2.txt",
+            "lang3": "test_files/lang3.txt",
+        }
+        mix = MixtureOfBitexts.create_from_files(
+            text_files, [("lang1", "lang2", [4, 7]), ("lang1", "lang3", [14, 17])], 2
+        )
+        batch = mix.next_batch()
+        expected1 = (
+            ("He drinks coffee.", "We watched a movie."),
+            ("Il boit du café.", "Nous avons regardé un film."),
+            "lang1",
+            "lang2",
+        )
+        expected2 = (
+            ("The child drew a star.", "My brother broke the window."),
+            (
+                "Das Kind hat einen Stern gezeichnet.",
+                "Mein Bruder hat das Fenster zerbrochen.",
+            ),
+            "lang1",
+            "lang3",
+        )
+        self.assertIn(batch, [expected1, expected2])
+        
+    def test_mixture_of_bitexts_limited_lines2(self):
+        bitext1 = Bitext("test_files/lang1.txt", "test_files/lang2.txt", lines=[4, 7])
+        bitext2 = Bitext("test_files/lang1.txt", "test_files/lang3.txt", lines=[14, 17])
+        mix = MixtureOfBitexts(
+            {("lang1", "lang2"): bitext1, ("lang1", "lang3"): bitext2}, 2
+        )
+        batch = mix.next_batch()
+        expected1 = (
+            ("He drinks coffee.", "We watched a movie."),
+            ("Il boit du café.", "Nous avons regardé un film."),
+            "lang1",
+            "lang2",
+        )
+        expected2 = (
+            ("The child drew a star.", "My brother broke the window."),
+            (
+                "Das Kind hat einen Stern gezeichnet.",
+                "Mein Bruder hat das Fenster zerbrochen.",
+            ),
+            "lang1",
+            "lang3",
+        )
+        self.assertIn(batch, [expected1, expected2])
+
+    def test_tokenized_mixture_of_bitexts(self):
+        text_files = {
+            "eng_Latn": "test_files/lang1.txt",
+            "fra_Latn": "test_files/lang2.txt",
+        }
+        mix = MixtureOfBitexts.create_from_files(
+            text_files, [("eng_Latn", "fra_Latn", None)], 3
+        )
         base_model = "facebook/nllb-200-distilled-600M"
-        tokenizer = AutoTokenizer.from_pretrained(base_model)
-        lang1_sents, lang2_sents, lang1, lang2 = mix.next_batch()
-        tokenized = tokenize(lang1_sents, lang1, tokenizer, 100,
-                             alt_pad_token=-100)
-        expected_ids = tensor(
+        tokenizer = load_tokenizer(base_model)
+        tmob = TokenizedMixtureOfBitexts(mix, tokenizer, max_length=128)
+        lang1_batch, lang2_batch, _, _ = tmob.next_batch()
+        expected_lang1_token_ids = tensor(
             [
                 [256047, 1617, 7875, 228, 55501, 349, 227879, 248075, 2],
-                [256047, 11873, 272, 22665, 9, 28487, 248075, 2, -100],
-                [256047, 13710, 18379, 43583, 2299, 248075, 2, -100, -100],
+                [256047, 11873, 272, 22665, 9, 28487, 248075, 2, 1],
+                [256047, 13710, 18379, 43583, 2299, 248075, 2, 1, 1],
             ]
         )
-        expected_mask = tensor(
+        expected_lang2_token_ids = tensor(
+            [
+                [256057, 1181, 32779, 9, 170684, 356, 82, 324, 40284, 248075, 2],
+                [256057, 19945, 6622, 159, 68078, 248075, 2, -100, -100, -100, -100],
+                [256057, 21422, 5665, 138, 1166, 96236, 248075, 2, -100, -100, -100],
+            ]
+        )
+        expected_lang1_mask = tensor(
             [
                 [1, 1, 1, 1, 1, 1, 1, 1, 1],
                 [1, 1, 1, 1, 1, 1, 1, 1, 0],
                 [1, 1, 1, 1, 1, 1, 1, 0, 0],
             ]
         )
-        self.assertEqual(tokenized["input_ids"].tolist(), expected_ids.tolist())
-        self.assertEqual(tokenized["attention_mask"].tolist(), expected_mask.tolist())
-        
-    def test_tokenized_mixture_of_bitexts(self):
-        text_files = {"eng_Latn": "test_files/lang1.txt", "fra_Latn": "test_files/lang2.txt"}
-        mix = MixtureOfBitexts.create_from_files(text_files, [("eng_Latn", "fra_Latn")], 3)
-        base_model = "facebook/nllb-200-distilled-600M"
-        tokenizer = AutoTokenizer.from_pretrained(base_model)
-        tmob = TokenizedMixtureOfBitexts(mix, tokenizer, max_length=128)
-        lang1_token_ids, lang2_token_ids, lang1_mask, lang2_mask = tmob.next_batch()
-        expected_lang1_token_ids = tensor([[256047,   1617,   7875,    228,  55501,    349, 227879, 248075,      2],
-                                           [256047,  11873,    272,  22665,      9,  28487, 248075,      2,      1],
-                                           [256047,  13710,  18379,  43583,   2299, 248075,      2,      1,      1]])
-        expected_lang2_token_ids = tensor([[256057,   1181,  32779,      9, 170684,    356,     82,    324,  40284,  248075,      2],
-                                           [256057,  19945,   6622,    159,  68078, 248075,      2,   -100,   -100,    -100,   -100],
-                                           [256057,  21422,   5665,    138,   1166,  96236, 248075,      2,   -100,    -100,   -100]])
-        expected_lang1_mask = tensor([[1, 1, 1, 1, 1, 1, 1, 1, 1],
-                                      [1, 1, 1, 1, 1, 1, 1, 1, 0],
-                                      [1, 1, 1, 1, 1, 1, 1, 0, 0]])
-        expected_lang2_mask = tensor([[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                                      [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
-                                      [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0]])
-        self.assertEqual(lang1_token_ids.tolist(), expected_lang1_token_ids.tolist())
-        self.assertEqual(lang2_token_ids.tolist(), expected_lang2_token_ids.tolist())
-        self.assertEqual(lang1_mask.tolist(), expected_lang1_mask.tolist())
-        self.assertEqual(lang2_mask.tolist(), expected_lang2_mask.tolist())
-        
+        expected_lang2_mask = tensor(
+            [
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
+                [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+            ]
+        )
+        self.assertEqual(
+            lang1_batch["input_ids"].tolist(), expected_lang1_token_ids.tolist()
+        )
+        self.assertEqual(
+            lang2_batch["input_ids"].tolist(), expected_lang2_token_ids.tolist()
+        )
+        self.assertEqual(
+            lang1_batch["attention_mask"].tolist(), expected_lang1_mask.tolist()
+        )
+        self.assertEqual(
+            lang2_batch["attention_mask"].tolist(), expected_lang2_mask.tolist()
+        )
+
     def test_tokenized_mixture_of_bitexts_truncated(self):
-        text_files = {"eng_Latn": "test_files/lang1.txt", "fra_Latn": "test_files/lang2.txt"}
-        mix = MixtureOfBitexts.create_from_files(text_files, [("eng_Latn", "fra_Latn")], 3)
+        text_files = {
+            "eng_Latn": "test_files/lang1.txt",
+            "fra_Latn": "test_files/lang2.txt",
+        }
+        mix = MixtureOfBitexts.create_from_files(
+            text_files, [("eng_Latn", "fra_Latn", None)], 3
+        )
         base_model = "facebook/nllb-200-distilled-600M"
-        tokenizer = AutoTokenizer.from_pretrained(base_model)
+        tokenizer = load_tokenizer(base_model)
         tmob = TokenizedMixtureOfBitexts(mix, tokenizer, max_length=8)
-        lang1_token_ids, lang2_token_ids, lang1_mask, lang2_mask = tmob.next_batch()
-        expected_lang1_token_ids = tensor([[256047,   1617,   7875,    228,  55501,    349, 227879, 2],
-                                           [256047,  11873,    272,  22665,      9,  28487, 248075,      2],
-                                           [256047,  13710,  18379,  43583,   2299, 248075,      2,      1]])
-        expected_lang2_token_ids = tensor([[256057,   1181,  32779,      9, 170684,    356,     82,    2],
-                                           [256057,  19945,   6622,    159,  68078, 248075,      2,   -100],
-                                           [256057,  21422,   5665,    138,   1166,  96236, 248075,      2]])
-        expected_lang1_mask = tensor([[1, 1, 1, 1, 1, 1, 1, 1],
-                                      [1, 1, 1, 1, 1, 1, 1, 1],
-                                      [1, 1, 1, 1, 1, 1, 1, 0]])
-        expected_lang2_mask = tensor([[1, 1, 1, 1, 1, 1, 1, 1],
-                                      [1, 1, 1, 1, 1, 1, 1, 0],
-                                      [1, 1, 1, 1, 1, 1, 1, 1]])
-        self.assertEqual(lang1_token_ids.tolist(), expected_lang1_token_ids.tolist())
-        self.assertEqual(lang2_token_ids.tolist(), expected_lang2_token_ids.tolist())
-        self.assertEqual(lang1_mask.tolist(), expected_lang1_mask.tolist())
-        self.assertEqual(lang2_mask.tolist(), expected_lang2_mask.tolist())
-        
+        lang1_batch, lang2_batch, _, _ = tmob.next_batch()
+        expected_lang1_token_ids = tensor(
+            [
+                [256047, 1617, 7875, 228, 55501, 349, 227879, 2],
+                [256047, 11873, 272, 22665, 9, 28487, 248075, 2],
+                [256047, 13710, 18379, 43583, 2299, 248075, 2, 1],
+            ]
+        )
+        expected_lang2_token_ids = tensor(
+            [
+                [256057, 1181, 32779, 9, 170684, 356, 82, 2],
+                [256057, 19945, 6622, 159, 68078, 248075, 2, -100],
+                [256057, 21422, 5665, 138, 1166, 96236, 248075, 2],
+            ]
+        )
+        expected_lang1_mask = tensor(
+            [
+                [1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 0],
+            ]
+        )
+        expected_lang2_mask = tensor(
+            [
+                [1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 0],
+                [1, 1, 1, 1, 1, 1, 1, 1],
+            ]
+        )
+        self.assertEqual(
+            lang1_batch["input_ids"].tolist(), expected_lang1_token_ids.tolist()
+        )
+        self.assertEqual(
+            lang2_batch["input_ids"].tolist(), expected_lang2_token_ids.tolist()
+        )
+        self.assertEqual(
+            lang1_batch["attention_mask"].tolist(), expected_lang1_mask.tolist()
+        )
+        self.assertEqual(
+            lang2_batch["attention_mask"].tolist(), expected_lang2_mask.tolist()
+        )
+
+    def test_tokenized_mixture_of_bitexts_w_permutations(self):
+        text_files = {
+            "eng_Latn": "test_files/lang1.txt",
+            "fra_Latn": "test_files/lang2.txt",
+        }
+        mix = MixtureOfBitexts.create_from_files(
+            text_files, [("eng_Latn", "fra_Latn", None)], 3
+        )
+        base_model = "facebook/nllb-200-distilled-600M"
+        tokenizer = load_tokenizer(base_model)
+        pmap = {"eng_Latn": lambda x: x + 1, "fra_Latn": lambda x: x + 2}
+        tmob = TokenizedMixtureOfBitexts(
+            mix, tokenizer, max_length=128, permutation_map=pmap
+        )
+        lang1_batch, lang2_batch, _, _ = tmob.next_batch()
+        expected_lang1_token_ids = tensor(
+            [
+                [256048, 1618, 7876, 229, 55502, 350, 227880, 248076, 3],
+                [256048, 11874, 273, 22666, 10, 28488, 248076, 3, 2],
+                [256048, 13711, 18380, 43584, 2300, 248076, 3, 2, 2],
+            ]
+        )
+        expected_lang2_token_ids = tensor(
+            [
+                [256059, 1183, 32781, 11, 170686, 358, 84, 326, 40286, 248077, 4],
+                [256059, 19947, 6624, 161, 68080, 248077, 4, -98, -98, -98, -98],
+                [256059, 21424, 5667, 140, 1168, 96238, 248077, 4, -98, -98, -98],
+            ]
+        )
+        expected_lang1_mask = tensor(
+            [
+                [1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 0],
+                [1, 1, 1, 1, 1, 1, 1, 0, 0],
+            ]
+        )
+        expected_lang2_mask = tensor(
+            [
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
+                [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+            ]
+        )
+        self.assertEqual(
+            lang1_batch["input_ids"].tolist(), expected_lang1_token_ids.tolist()
+        )
+        self.assertEqual(
+            lang2_batch["input_ids"].tolist(), expected_lang2_token_ids.tolist()
+        )
+        self.assertEqual(
+            lang1_batch["attention_mask"].tolist(), expected_lang1_mask.tolist()
+        )
+        self.assertEqual(
+            lang2_batch["attention_mask"].tolist(), expected_lang2_mask.tolist()
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
