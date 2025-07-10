@@ -80,8 +80,6 @@ def similarity_index (lang_code_list, tokenizer, filter_num):
 
 #model 2: (num of shared tokens)/(num of total tokens)
 def similarity_index2 (lang_code_list, tokenizer, filter_num):
-    OUT_DIR = Path(f"./pmi_lang_pairs_data_{filter_num}filtered")
-    OUT_DIR.mkdir(exist_ok=True)
     LANGS = lang_code_list
     for lang_order_number in range(len(LANGS)):
         for lang_code2 in LANGS[(lang_order_number+1):]:
