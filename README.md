@@ -77,7 +77,7 @@ Things of note:
 
 ## Extracting vocabulary from a language pair dataset
 
-This repository contains code to extract the common vocabulary appearing in the paralel corpus of two languages, e.g. en and es
+This repository contains code to extract the common vocabulary appearing in the paralel corpus of two languages, e.g. en and es. This fucntion is located in `scripts` directory.
 
 ### Description
 
