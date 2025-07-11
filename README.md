@@ -75,17 +75,17 @@ Things of note:
 - The language ids (e.g. `eng_Latn`, `tsn_Latn`, `tso_Latn`) are the language ids that will be prepended by the tokenizer to the tokenized text for that corpus. Note that we do not use `esp_Latn` in this example because we are enciphering the two Spanish corpora.
 
 
-# Extracting vocabulary from a language pair dataset
+## Extracting vocabulary from a language pair dataset
 
 This repository contains code to extract the common vocabulary appearing in the paralel corpus of two languages, e.g. en and es
 
-## Description
+### Description
 
 `extract_vocab_version3` extracts **common phrases** (identical in both source and target languages) from a parallel corpus dataset.
 
 ---
 
-## Input format
+### Input format
 
 | Input Arg    | Type   | Description                                                                 |
 |--------------|--------|-----------------------------------------------------------------------------|
@@ -95,7 +95,7 @@ This repository contains code to extract the common vocabulary appearing in the 
 
 ---
 
-## Output format
+### Output format
 
 - **Returns**:  
   A `List[str]` of common phrases that are exactly the same in both languages.
