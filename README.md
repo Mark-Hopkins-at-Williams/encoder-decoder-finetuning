@@ -79,4 +79,30 @@ Things of note:
 
 This repository contains code to extract the common vocabulary appearing in the paralel corpus of two languages, e.g. en and es
 
-Will finish today
+## Description
+
+`extract_vocab_version3` extracts **common phrases** (identical in both source and target languages) from a parallel corpus dataset.
+
+---
+
+## Input format
+
+| Input Arg    | Type   | Description                                                                 |
+|--------------|--------|-----------------------------------------------------------------------------|
+| `lang_code1` | `str`  | Source language code (e.g., `"en"`, `"fr"`, `"es"`)                         |
+| `lang_code2` | `str`  | Target language code (e.g., `"es"`, `"de"`, `"zh"`)                         |
+| `mode`       | `str`  | Dataset type: `"train"`, `"dev"`, or `"test"` (default: `"train"`)        |
+
+---
+
+## Output format
+
+- **Returns**:  
+  A `List[str]` of common phrases that are exactly the same in both languages.
+
+- **Also saves output to file**:  
+  ```text
+  common_vocab/{mode}.{lang_code1}_{lang_code2}_common_vocab
+  ```
+
+
