@@ -106,29 +106,39 @@ def align_parallel_corpus(
     return out
 
 # Make a tokenized bilingual text file that fast_align can be used on
+import regex as re  # NOT regular `re`
+from pathlib import Path
+
 def word_alignment_textfile_generator(lang_code1, lang_code2, mode="train"):
-    OUT_DIR = Path(f"word_alignment_approach_data")
+    OUT_DIR = Path("word_alignment_approach_data")
     OUT_DIR.mkdir(exist_ok=True)
-    #read the corpora text file of given language pair, and turn them into a list
-    lang1_list = []
-    lang2_list = []
+
     filename1 = f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/europarlData/{mode}.{lang_code1}"
     filename2 = f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/europarlData/{mode}.{lang_code2}"
-    with open(filename1, "r") as f1:
+
+    with open(filename1, "r", encoding="utf-8") as f1:
         lang1_list = f1.readlines()
-    with open(filename2, "r") as f2:
+    with open(filename2, "r", encoding="utf-8") as f2:
         lang2_list = f2.readlines()
-    #create a new file, and add the tokenized version of each language in fast_align friendly form
-    with open(OUT_DIR / f"{mode}.{lang_code1}-{lang_code2}", "w") as f:
-        for line_num in range(len(lang1_list)):
-            tokenized_lang1_list = re.findall(r"\w+|[^\w\s]", lang1_list[line_num])
-            tokenized_lang2_list = re.findall(r"\w+|[^\w\s]", lang2_list[line_num])
-            tokenized_lang1 = ' '.join(tokenized_lang1_list)
-            tokenized_lang2 = ' '.join(tokenized_lang2_list)
-            
-            f.write(tokenized_lang1)
-            f.write(" ||| ")
-            f.write(tokenized_lang2 + "\n")
+
+    output_file = OUT_DIR / f"{mode}.{lang_code1}-{lang_code2}"
+    with open(output_file, "w", encoding="utf-8") as f:
+        for i in range(len(lang1_list)):
+            l1 = lang1_list[i].strip()
+            l2 = lang2_list[i].strip()
+
+            # Unicode-aware tokenization: \p{L} = letter, \p{N} = number, \p{P} = punctuation
+            tokens1 = re.findall(r"\p{L}+\p{M}*|\p{N}+|\p{P}", l1)
+            tokens2 = re.findall(r"\p{L}+\p{M}*|\p{N}+|\p{P}", l2)
+
+            tokenized_lang1 = ' '.join(tokens1) if tokens1 else l1
+            tokenized_lang2 = ' '.join(tokens2) if tokens2 else l2
+            if tokenized_lang1 == "":
+                tokenized_lang1 = "EMPTY"
+            if tokenized_lang2 == "":
+                tokenized_lang2 = "EMPTY"
+
+            f.write(f"{tokenized_lang1} ||| {tokenized_lang2}\n")
 
 def sentence_to_words(sentence: str) -> List[str]:
     words = []
@@ -486,57 +496,93 @@ def extract_vocab_version2(filename, lang_code1, lang_code2, filter_num, tokeniz
     return final_words
 
 # Using word allignment package
-def extract_vocab_version3( lang_code1, lang_code2, mode="train"):
-    word_alignment_textfile_generator(lang_code1, lang_code2, mode)
-    file_path = f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/word_alignment_approach_data/{mode}.{lang_code1}-{lang_code2}"
-    alignments = align_parallel_corpus(file_path)
+def extract_vocab_version3(lang_list, mode="train"):
+    count = 0
+    n = 0.5*len(lang_list)*(len(lang_list)-1)
+    for j in range(len(lang_list)):
+        for k in range (j+1,len(lang_list)):
+            lang_code1 = lang_list[j]
+            lang_code2 = lang_list[k]
+            print(f"Strating extraction for {lang_code1} and {lang_code2}")
+            file_path = f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/word_alignment_approach_data/{mode}.{lang_code1}-{lang_code2}"
+            if Path(file_path).exists():
+                count += 1
+                print(f"Sucess! {count}/{n} completed!")
+                continue
+            word_alignment_textfile_generator(lang_code1, lang_code2, mode)
+            
+            alignments = align_parallel_corpus(file_path)
 
-    line_list1 = []
-    line_list2 = []
-    
-    with open(file_path, "r") as f1:
-        line_list = f1.readlines()
-        for line in tqdm(line_list):
-            src, _, tgt = line.partition(" ||| ")
-            line_list1.append(src)
-            line_list2.append(tgt)
+            line_list1 = []
+            line_list2 = []
+            
+            with open(file_path, "r") as f1:
+                line_list = f1.readlines()
+                for line in tqdm(line_list):
+                    src, _, tgt = line.partition(" ||| ")
+                    line_list1.append(src)
+                    line_list2.append(tgt)
 
 
-    phrase_list = []
-    for i in tqdm(range(len(line_list1))):
-        word_list1 = line_list1[i].split(" ")
-        word_list2 = line_list2[i].split(" ")
-        current_dict = alignments[i]
-        set_of_tuples = set()
-        for src,tgt in current_dict.items():
-            set_of_tuples.add((src,tgt))
-        phrase_tuple_list = list(extract_phrase_pairs(word_list1, word_list2,set_of_tuples))
-        #phrase_tuple_list = [phrase_tuple_list[43]]
+            phrase_list = []
+            for i in tqdm(range(len(line_list1))):
+                word_list1 = line_list1[i].split(" ")
+                word_list2 = line_list2[i].split(" ")
+                current_dict = alignments[i]
+                set_of_tuples = set()
+                for src,tgt in current_dict.items():
+                    set_of_tuples.add((src,tgt))
+                phrase_tuple_list = list(extract_phrase_pairs(word_list1, word_list2,set_of_tuples))
+                #phrase_tuple_list = [phrase_tuple_list[43]]
+                
+                for pair in phrase_tuple_list:
+                    sent1 = " ".join(list(pair[0]))
+                    sent2 = " ".join(list(pair[1]))
+                    phrase_list.append((sent1,sent2))
+            result = []
+            for phrase_pair in phrase_list:
+                (sent1, sent2) = phrase_pair
+                if sent1 == sent2 :
+                    result.append(sent1)
+            res = list(set(result))
+
+            OUT_DIR = Path(f"common_vocab/{mode}")
+            OUT_DIR.mkdir(exist_ok=True)
+            with open(OUT_DIR / f"{mode}.{lang_code1}_{lang_code2}_common_vocab", "w") as f:
+                f.write("\n".join(res))
+            count += 1
         
-        for pair in phrase_tuple_list:
-            sent1 = " ".join(list(pair[0]))
-            sent2 = " ".join(list(pair[1]))
-            phrase_list.append((sent1,sent2))
-    result = []
-    for phrase_pair in phrase_list:
-        (sent1, sent2) = phrase_pair
-        if sent1 == sent2 :
-            result.append(sent1)
-    res = list(set(result))
-
-    OUT_DIR = Path(f"common_vocab")
-    OUT_DIR.mkdir(exist_ok=True)
-    with open(OUT_DIR / f"{mode}.{lang_code1}_{lang_code2}_common_vocab", "w") as f:
-        f.write(" || ".join(res))
-    return list(set(result))
+            print(f"Success! {count}/{int(n)} completed!")
 
 
-model_name = "facebook/nllb-200-distilled-600M"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-#print(extract_vocab_version3("es_en_pmi_ranking.txt", "es", "en", 50, tokenizer, "train"))
+
+
+def lines_counter(lang_list, mode="train"):
+    lines_dict = {}
+    for j in range(len(lang_list)):
+        for k in range (j+1,len(lang_list)):
+            lang_code1 = lang_list[j]
+            lang_code2 = lang_list[k]
+            print(lang_code1, lang_code2)
+            with open(f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/{mode}/{mode}.{lang_code1}_{lang_code2}_common_vocab",'r') as file:
+                num_lines = sum(1 for line in file)
+                lines_dict[(lang_code1,lang_code2)] = num_lines
+    with open(f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/{mode}.lines_counter",'w') as f:
+        for pair, count in lines_dict.items():
+            f.write(f"{pair[0]}_{pair[1]}: {count}\n")
 
 if __name__ == "__main__":
-    print(extract_vocab_version3( "en", "es", "dev"))
+
+    model_name = "facebook/nllb-200-distilled-600M"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    LANGS = [
+    "en", "cs", "da", "de", "el",
+    "es", "et", "fi", "fr", "hu",
+    "it", "lt", "lv", "nl", "pl",
+    "pt", "ro", "sk", "sl", "sv", "bg"
+    ]
+    #extract_vocab_version3(LANGS, "dev")
+    lines_counter(LANGS,"dev")
     
         
 
