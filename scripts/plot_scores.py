@@ -2,7 +2,7 @@ import json
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-PREFIX = "exp1-2"
+PREFIX = "exp2-4"
 BASE_DIR = Path("experiments/") / PREFIX
 METRIC = "bleu"
 

@@ -1,0 +1,63 @@
+{
+    "model_dir": "experiments/exp1-5/exp1-5-multi-1024",
+    "corpora": {
+        "l1-l2": {
+            "lang1": {
+                "lang_code": "eng_Latn",
+                "train": "test_files/lang1.txt",
+                "dev": "test_files/dev.lang1",
+                "test": "test_files/test.lang1",
+                "permutation": 0
+            },
+            "lang2": {
+                "lang_code": "fra_Latn",
+                "train": "test_files/lang2.txt",
+                "dev": "test_files/dev.lang2",
+                "test": "test_files/test.lang2",
+                "permutation": 1
+            }
+        },
+        "l1-l3": {
+            "lang1": {
+                "lang_code": "eng_Latn",
+                "train": "test_files/lang1.txt",
+                "dev": "test_files/dev.lang1",
+                "test": "test_files/test.lang1",
+                "permutation": 0
+            },
+            "lang3": {
+                "lang_code": "deu_Latn",
+                "train": "test_files/lang3.txt",
+                "dev": "test_files/dev.lang3",
+                "test": "test_files/test.lang3",
+                "permutation": 1
+            }
+        }
+    },
+    "bitexts": [
+        {
+            "corpus": "l1-l2",
+            "src": "lang1",
+            "tgt": "lang2",
+            "train_lines": [
+                0,
+                8
+            ]
+        },
+        {
+            "corpus": "l1-l3",
+            "src": "lang1",
+            "tgt": "lang3",
+            "train_lines": [
+                8,
+                16
+            ]
+        }
+    ],
+    "finetuning_parameters": {
+        "base_model": "facebook/nllb-200-distilled-600M",
+        "batch_size": 2,
+        "num_steps": 1002,
+        "freeze_encoder": false
+    }
+}

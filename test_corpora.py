@@ -1,3 +1,4 @@
+import json
 import unittest
 from corpora import load_tokenizer, Bitext, MixtureOfBitexts, TokenizedMixtureOfBitexts
 from torch import tensor
@@ -143,6 +144,13 @@ class TestUtil(unittest.TestCase):
             "lang3",
         )
         self.assertIn(batch, [expected1, expected2])
+        
+    def test_mixture_of_bitexts5(self):
+        with open('test_files/example_config.json') as f:
+            config = json.load(f)
+        mix = MixtureOfBitexts.create_from_config(config, "dev")
+        next_batch = mix.next_batch()
+        print(next_batch)
 
     def test_mixture_of_bitexts_limited_lines1(self):
         text_files = {

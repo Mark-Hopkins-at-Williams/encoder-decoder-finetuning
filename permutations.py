@@ -26,7 +26,7 @@ def save_permutation_map(pmap : Dict[str, Permutation], filename : str):
     to_serialize = dict()
     for key in pmap:
         info = {'domain': pmap[key].domain, 'range': pmap[key].range}
-        to_serialize[key] = info
+        to_serialize['|||'.join(key)] = info
     with open(filename, "w") as writer:
         json.dump(to_serialize, writer)
         
@@ -38,7 +38,8 @@ def load_permutation_map(filename : str):
     for key in saved_drs:
         dr = saved_drs[key]
         p = Permutation(dr['domain'], dr['range'])
-        pmap[key] = p
+        new_key = tuple(key.split("|||"))
+        pmap[new_key] = p
     return pmap
     
 

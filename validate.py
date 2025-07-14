@@ -36,14 +36,16 @@ def translate(
     return tokenizer.batch_decode(result, skip_special_tokens=True)
 
 
-def translate_tokenized_mixture_of_bitexts(mix, model, tokenizer, pmap):         
+def translate_tokenized_mixture_of_bitexts(mix, model, tokenizer, lang_codes, pmap):         
     if USE_CUDA:
         model.cuda()
     batch = mix.next_batch()  
     translations = dict()
     while batch is not None:
-        src, _, src_code, tgt_code = batch        
-        permutation = pmap[tgt_code] if tgt_code in pmap else None
+        src, _, src_lang, tgt_lang = batch        
+        permutation = pmap[tgt_lang] if tgt_lang in pmap else None
+        src_code = lang_codes[src_lang]
+        tgt_code = lang_codes[tgt_lang]
         key = '->'.join([src_code, tgt_code])
         if key not in translations:
             translations[key] = []

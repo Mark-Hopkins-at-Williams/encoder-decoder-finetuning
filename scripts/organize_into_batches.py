@@ -1,3 +1,4 @@
+import argparse
 import os
 from pathlib import Path
 from random import shuffle
@@ -61,9 +62,11 @@ def reorganize(batch_size, root_dir, split, output_dir):
 
 
 if __name__ == "__main__":
-    reorganize(
-        128,
-        Path("/mnt/storage/hopkins/data/flores/test/"),
-        "test",
-        Path("./foo.test"),
-    )
+    parser = argparse.ArgumentParser(description="Reorders the sentences of a parallel corpus so that batched sentences have similar lengths.")
+    parser.add_argument("--in_dir", type=str, required=True, help="Directory with the original files.")
+    parser.add_argument("--out_dir", type=str, required=True, help="Directory for storing the new, reordered files.")
+    parser.add_argument("--batch_size", type=int, default=128, help="Desired batch size.")
+    args = parser.parse_args()
+    in_dir = Path(args.in_dir)        
+    out_dir = Path(args.out_dir)  
+    reorganize(args.batch_size, in_dir, "train", out_dir)

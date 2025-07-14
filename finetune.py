@@ -139,7 +139,7 @@ def finetune(
                 cleanup()
                 continue
             else:
-                raise
+                raise e
 
         if i > 0 and i % report_every == 0:
             avg_train_loss = np.mean(train_losses[-report_every:])
@@ -188,12 +188,7 @@ def main():
         config = json.load(reader)
 
     all_corpora = config["corpora"]
-    train_corpora = {key: all_corpora[key]["train"] for key in all_corpora}
-    dev_corpora = {key: all_corpora[key]["dev"] for key in all_corpora}
-    test_corpora = {key: all_corpora[key]["test"] for key in all_corpora}
     params = config["finetuning_parameters"]
-    train_bitexts = [(b["src"], b["tgt"], b["train_lines"]) for b in config["bitexts"]]
-    devtest_bitexts = [(b["src"], b["tgt"], None) for b in config["bitexts"]]
     should_finetune = params["finetune"] if "finetune" in params else True
     
     # Create unique model directory
@@ -205,35 +200,39 @@ def main():
     os.makedirs(model_dir)
     shutil.copy(args.config, Path(model_dir) / Path(args.config).name)
 
-    train_data = MixtureOfBitexts.create_from_files(
-        train_corpora, train_bitexts, batch_size=params["batch_size"]
-    )
-    dev_data = MixtureOfBitexts.create_from_files(
-        dev_corpora, devtest_bitexts, batch_size=params["batch_size"]
-    )
+    lang_codes = dict()        
+    for corpus in config['corpora']:
+        for key in config['corpora'][corpus]:
+            print(key)
+            lang_codes[(corpus, key)] = config['corpora'][corpus][key]['lang_code']
+    
+
+    train_data = MixtureOfBitexts.create_from_config(config, "train", only_once_thru=False)    
+    dev_data = MixtureOfBitexts.create_from_config(config, "dev", only_once_thru=False)
     model_name = params["base_model"]
     tokenizer = load_tokenizer(model_name)
 
     # Create the permutations
     permutations = dict()
     pmap = dict()
-    for language in all_corpora:
-        permutation_index = all_corpora[language]["permutation"]
-        if permutation_index > 0:
-            if permutation_index not in permutations:
-                permutations[permutation_index] = (
-                    create_random_permutation_with_fixed_points(
-                        len(tokenizer), tokenizer.all_special_ids
+    for corpus in all_corpora:
+        for language in all_corpora[corpus]:
+            permutation_index = all_corpora[corpus][language]["permutation"]
+            if permutation_index > 0:
+                if permutation_index not in permutations:
+                    permutations[permutation_index] = (
+                        create_random_permutation_with_fixed_points(
+                            len(tokenizer), tokenizer.all_special_ids
+                        )
                     )
-                )
-            pmap[language] = permutations[permutation_index]
+                pmap[(corpus, language)] = permutations[permutation_index]
         
     save_permutation_map(pmap, Path(model_dir) / "permutations.json")
     tokenized_train = TokenizedMixtureOfBitexts(
-        train_data, tokenizer, max_length=128, permutation_map=pmap
+        train_data, tokenizer, max_length=128, lang_codes=lang_codes, permutation_map=pmap
     )
     tokenized_dev = TokenizedMixtureOfBitexts(
-        dev_data, tokenizer, max_length=128, permutation_map=pmap
+        dev_data, tokenizer, max_length=128, lang_codes=lang_codes, permutation_map=pmap
     )
     finetune(
         tokenized_train,
@@ -241,35 +240,30 @@ def main():
         model_name,
         model_dir,
         params['num_steps'],
-        freeze_encoder=False,
+        freeze_encoder=params['freeze_encoder'] if 'freeze_encoder' in params else False,
         should_finetune=should_finetune
     )
 
-    test_data = MixtureOfBitexts.create_from_files(
-        test_corpora, devtest_bitexts, batch_size=params["batch_size"],
-        only_once_thru=True
-    )
-    tokenized_test = TokenizedMixtureOfBitexts(test_data, tokenizer, max_length=128)
+    test_data = MixtureOfBitexts.create_from_config(config, "test", only_once_thru=True)    
+    tokenized_test = TokenizedMixtureOfBitexts(test_data, tokenizer, max_length=128, lang_codes=lang_codes, permutation_map=pmap)
     model = AutoModelForSeq2SeqLM.from_pretrained(model_dir)
     if USE_CUDA:
         model.cuda()
     translations = translate_tokenized_mixture_of_bitexts(
-        tokenized_test, model, tokenizer, pmap
+        tokenized_test, model, tokenizer, lang_codes, pmap
     )
     with open(Path(model_dir) / "translations.json", "w") as writer:
         json.dump(translations, writer)
     print("Translations complete.")
 
-    test_data = MixtureOfBitexts.create_from_files(
-        test_corpora, devtest_bitexts, batch_size=params["batch_size"],
-        only_once_thru=True
-    )
-
+    test_data = MixtureOfBitexts.create_from_config(config, "test", only_once_thru=True)    
     references = dict()
     batch = test_data.next_batch()
     while batch is not None:
-        _, tgt, src_code, tgt_code = batch
-        key = "->".join([src_code, tgt_code])
+        _, tgt, src_lang, tgt_lang = batch
+        src_code = lang_codes[src_lang]
+        tgt_code = lang_codes[tgt_lang]
+        key = '->'.join([src_code, tgt_code])
         if key not in references:
             references[key] = []
         references[key].extend(tgt)

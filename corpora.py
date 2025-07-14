@@ -31,7 +31,7 @@ class Bitext(IterableDataset):
     def line_streamer(self, file_path: str) -> Iterator[str]:
         current_line = 0
         with open(file_path, "r", encoding="utf-8") as f:
-            for line in f:      
+            for line in f:  
                 if self.lines is None or self.lines[0] <= current_line < self.lines[1]:       
                     yield line.rstrip("\n")                
                 current_line += 1
@@ -52,7 +52,7 @@ class MixtureOfBitexts:
         sampling_probs: Optional[List[float]] = None,
         only_once_thru: bool = False
     ):
-        self.bitexts = bitexts
+        self.bitexts = bitexts        
         self.keys = list(bitexts)
         self.batch_size = batch_size
         self.batch_iters = {}
@@ -85,7 +85,7 @@ class MixtureOfBitexts:
         while still_choosing and len(self.completed_bitexts) < len(self.keys):
             lang_pair = random.choices(self.keys, weights=self.sampling_probs, k=1)[0]
             try:
-                lang1_sents, lang2_sents = next(self.batch_iters[lang_pair])
+                lang1_sents, lang2_sents = next(self.batch_iters[lang_pair])                
                 still_choosing = False
             except StopIteration:
                 if self.only_once_thru:
@@ -107,6 +107,22 @@ class MixtureOfBitexts:
     ) -> "MixtureOfBitexts":
         bitexts = {(l1, l2): Bitext(text_files[l1], text_files[l2], lines) for (l1, l2, lines) in lps}        
         return MixtureOfBitexts(bitexts, batch_size, sampling_probs, only_once_thru)
+    
+    @staticmethod
+    def create_from_config(config: dict, split: str, only_once_thru: bool = False) -> "MixtureOfBitexts":
+        all_corpora = dict()
+        for corpus in config['corpora']:
+            for key in config['corpora'][corpus]:
+                all_corpora[(corpus, key)] = config['corpora'][corpus][key][split]
+        bitexts = dict()
+        for bitext in config['bitexts']:
+            src = (bitext['corpus'], bitext['src'])
+            tgt = (bitext['corpus'], bitext['tgt'])
+            lines = bitext["train_lines"] if split == "train" else None
+            bitexts[(src, tgt)] = Bitext(all_corpora[src], all_corpora[tgt], lines)
+        params = config["finetuning_parameters"]
+        return MixtureOfBitexts(bitexts, params['batch_size'], sampling_probs=None, only_once_thru=only_once_thru)
+        
 
     def get_language_codes(self) -> List[str]:
         return sorted({code for pair in self.keys for code in pair})
@@ -118,15 +134,17 @@ class TokenizedMixtureOfBitexts:
         mixture_of_bitexts: MixtureOfBitexts,
         tokenizer: AutoTokenizer,
         max_length: int,
+        lang_codes: Dict[Tuple[str, str], str],
         permutation_map: Dict[str, Callable[[int], int]] = dict()
     ):
         self.mixture_of_bitexts = mixture_of_bitexts
         self.tokenizer = tokenizer
         self.max_length = max_length
+        self.lang_codes = lang_codes
         self.permutation_map = permutation_map
 
     def _tokenize(self, sents: List[str], lang: str, alt_pad_token: int = None):
-        self.tokenizer.src_lang = lang
+        self.tokenizer.src_lang = self.lang_codes[lang]
         tokens = self.tokenizer(
             sents,
             return_tensors="pt",
@@ -147,7 +165,7 @@ class TokenizedMixtureOfBitexts:
         batch = self.mixture_of_bitexts.next_batch()
         if batch is None:
             return None
-        lang1_sents, lang2_sents, lang1_code, lang2_code = batch
-        lang1_tokenized = self._tokenize(lang1_sents, lang1_code)
-        lang2_tokenized = self._tokenize(lang2_sents, lang2_code, alt_pad_token=-100)
-        return lang1_tokenized, lang2_tokenized, lang1_code, lang2_code
+        lang1_sents, lang2_sents, lang1, lang2 = batch
+        lang1_tokenized = self._tokenize(lang1_sents, lang1)
+        lang2_tokenized = self._tokenize(lang2_sents, lang2, alt_pad_token=-100)
+        return lang1_tokenized, lang2_tokenized, lang1, lang2

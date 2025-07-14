@@ -1,5 +1,3 @@
-
------
 # Encoder-Decoder Finetuning
 
 This repository contains code for finetuning encoder-decoder transformer models for machine translation.
