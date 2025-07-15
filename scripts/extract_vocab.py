@@ -110,7 +110,7 @@ import regex as re  # NOT regular `re`
 from pathlib import Path
 
 def word_alignment_textfile_generator(lang_code1, lang_code2, mode="train"):
-    OUT_DIR = Path("word_alignment_approach_data")
+    OUT_DIR = Path(f"word_alignment_approach_data/{mode}")
     OUT_DIR.mkdir(exist_ok=True)
 
     filename1 = f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/europarlData/{mode}.{lang_code1}"
@@ -134,9 +134,48 @@ def word_alignment_textfile_generator(lang_code1, lang_code2, mode="train"):
             tokenized_lang1 = ' '.join(tokens1) if tokens1 else l1
             tokenized_lang2 = ' '.join(tokens2) if tokens2 else l2
             if tokenized_lang1 == "":
-                tokenized_lang1 = "EMPTY"
+                continue
             if tokenized_lang2 == "":
-                tokenized_lang2 = "EMPTY"
+                continue
+
+            f.write(f"{tokenized_lang1} ||| {tokenized_lang2}\n")
+
+def word_alignment_textfile_generator_tokenizer(lang_code1, lang_code2, tokenizer, mode="train"):
+    OUT_DIR = Path(f"word_alignment_approach_data/{mode}_tokenized")
+    OUT_DIR.mkdir(exist_ok=True)
+
+    filename1 = f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/europarlData/{mode}.{lang_code1}"
+    filename2 = f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/europarlData/{mode}.{lang_code2}"
+
+    with open(filename1, "r", encoding="utf-8") as f1:
+        lang1_list = f1.readlines()
+    with open(filename2, "r", encoding="utf-8") as f2:
+        lang2_list = f2.readlines()
+
+    output_file = OUT_DIR / f"{mode}_tokenized.{lang_code1}-{lang_code2}"
+    with open(output_file, "w", encoding="utf-8") as f:
+        for i in range(len(lang1_list)):
+            l1 = lang1_list[i].strip()
+            l2 = lang2_list[i].strip()
+
+            all_special_tokens = set(tokenizer.all_special_tokens)
+
+            tokens1 = [
+                token for token in tokenizer.convert_ids_to_tokens(tokenizer(l1)["input_ids"])
+                if token not in all_special_tokens
+            ]
+
+            tokens2 = [
+                token for token in tokenizer.convert_ids_to_tokens(tokenizer(l2)["input_ids"])
+                if token not in all_special_tokens
+            ]
+
+            tokenized_lang1 = ' '.join(tokens1) if tokens1 else l1
+            tokenized_lang2 = ' '.join(tokens2) if tokens2 else l2
+            if tokenized_lang1 == "":
+                continue
+            if tokenized_lang2 == "":
+                continue
 
             f.write(f"{tokenized_lang1} ||| {tokenized_lang2}\n")
 
@@ -504,7 +543,7 @@ def extract_vocab_version3(lang_list, mode="train"):
             lang_code1 = lang_list[j]
             lang_code2 = lang_list[k]
             print(f"Strating extraction for {lang_code1} and {lang_code2}")
-            file_path = f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/word_alignment_approach_data/{mode}.{lang_code1}-{lang_code2}"
+            file_path = f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/word_alignment_approach_data/{mode}/{mode}.{lang_code1}-{lang_code2}"
             if Path(file_path).exists():
                 count += 1
                 print(f"Sucess! {count}/{n} completed!")
@@ -554,7 +593,65 @@ def extract_vocab_version3(lang_list, mode="train"):
         
             print(f"Success! {count}/{int(n)} completed!")
 
+def extract_vocab_version3_tokenized(lang_list, tokenizer, mode="train"):
+    count = 0
+    n = 0.5*len(lang_list)*(len(lang_list)-1)
+    for j in range(len(lang_list)):
+        for k in range (j+1,len(lang_list)):
+            lang_code1 = lang_list[j]
+            lang_code2 = lang_list[k]
+            print(f"Strating extraction for {lang_code1} and {lang_code2}")
+            file_path = f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/word_alignment_approach_data/{mode}_tokenized/{mode}_tokenized.{lang_code1}-{lang_code2}"
+            if Path(f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/train_tokenized/{mode}.{lang_code1}_{lang_code2}_common_vocab").exists():
+                count += 1
+                print(f"Success! {count}/{n} completed!")
+                continue
+            word_alignment_textfile_generator_tokenizer(lang_code1, lang_code2, tokenizer, mode)
+            
+            alignments = align_parallel_corpus(file_path)
 
+            line_list1 = []
+            line_list2 = []
+            
+            with open(file_path, "r") as f1:
+                line_list = f1.readlines()
+                for line in tqdm(line_list):
+                    src, _, tgt = line.partition(" ||| ")
+                    line_list1.append(src)
+                    line_list2.append(tgt)
+
+
+            phrase_list = []
+            for i in tqdm(range(len(line_list1))):
+                word_list1 = line_list1[i].split(" ")
+                word_list2 = line_list2[i].split(" ")
+                current_dict = alignments[i]
+                set_of_tuples = set()
+                for src,tgt in current_dict.items():
+                    set_of_tuples.add((src,tgt))
+                phrase_tuple_list = list(extract_phrase_pairs(word_list1, word_list2, set_of_tuples))
+
+                
+                
+                for pair in phrase_tuple_list:
+                    sent1 = "".join(list(pair[0])).replace("▁", " ").strip()
+                    sent2 = "".join(list(pair[1])).replace("▁", " ").strip()
+
+                    phrase_list.append((sent1,sent2))
+            result = []
+            for phrase_pair in phrase_list:
+                (sent1, sent2) = phrase_pair
+                if sent1 == sent2 :
+                    result.append(sent1)
+            res = list(set(result))
+
+            OUT_DIR = Path(f"common_vocab/{mode}_tokenized")
+            OUT_DIR.mkdir(exist_ok=True)
+            with open(OUT_DIR / f"{mode}.{lang_code1}_{lang_code2}_common_vocab", "w") as f:
+                f.write("\n".join(res))
+            count += 1
+        
+            print(f"Success! {count}/{int(n)} completed!")
 
 
 def lines_counter(lang_list, mode="train"):
@@ -564,10 +661,10 @@ def lines_counter(lang_list, mode="train"):
             lang_code1 = lang_list[j]
             lang_code2 = lang_list[k]
             print(lang_code1, lang_code2)
-            with open(f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/{mode}/{mode}.{lang_code1}_{lang_code2}_common_vocab",'r') as file:
+            with open(f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/{mode}_tokenized/{mode}.{lang_code1}_{lang_code2}_common_vocab",'r') as file:
                 num_lines = sum(1 for line in file)
                 lines_dict[(lang_code1,lang_code2)] = num_lines
-    with open(f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/{mode}.lines_counter",'w') as f:
+    with open(f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/{mode}_tokenized.lines_counter",'w') as f:
         for pair, count in lines_dict.items():
             f.write(f"{pair[0]}_{pair[1]}: {count}\n")
 
@@ -581,8 +678,10 @@ if __name__ == "__main__":
     "it", "lt", "lv", "nl", "pl",
     "pt", "ro", "sk", "sl", "sv", "bg"
     ]
-    #extract_vocab_version3(LANGS, "dev")
-    lines_counter(LANGS,"dev")
+    extract_vocab_version3_tokenized(LANGS, tokenizer, "train")
+    #extract_vocab_version3(LANGS, "train")
+    #lines_counter(LANGS,"dev")
+    #word_alignment_textfile_generator("en", "es", tokenizer, mode="train")
     
         
 
