@@ -12,7 +12,7 @@ import subprocess, tempfile, os, pathlib
 from typing import List, Dict, Optional
 
 
-def extract_phrase_pairs(f_words, e_words, alignments, max_phrase_len=7):
+def extract_phrase_pairs(f_words, e_words, alignments, max_phrase_len=10):
     """
     Extracts consistent phrase pairs from a word-aligned sentence pair.
 
@@ -673,10 +673,7 @@ if __name__ == "__main__":
     model_name = "facebook/nllb-200-distilled-600M"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     LANGS = [
-    "en", "cs", "da", "de", "el",
-    "es", "et", "fi", "fr", "hu",
-    "it", "lt", "lv", "nl", "pl",
-    "pt", "ro", "sk", "sl", "sv", "bg"
+    "es", "pt"
     ]
     extract_vocab_version3_tokenized(LANGS, tokenizer, "train")
     #extract_vocab_version3(LANGS, "train")
