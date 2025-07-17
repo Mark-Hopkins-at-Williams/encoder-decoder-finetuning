@@ -87,8 +87,8 @@ def create_multituning_config(num_train_lines):
                 }
             },
             "lexicon": {
-                SRC: {
-                    "lang_code": TGTS[0],
+                TGTS[0]: {
+                    "lang_code": TGT_IDS[0],
                     "train": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/optimized_data/optimized_train_128.{TGTS[0]}",
                     "dev": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/europarlData/dev.{TGTS[0]}",
                     "test": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/europarlData/test.{TGTS[0]}",
