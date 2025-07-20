@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-VARIANT = 1
+VARIANT = 5
 
 if VARIANT == 1:
     BASE_MODEL = "facebook/nllb-200-distilled-600M"
@@ -13,8 +13,26 @@ elif VARIANT == 2:
     BASE_MODEL = "facebook/nllb-200-distilled-600M"
     SRC = "en"
     SRC_ID = "eng_Latn"
-    TGTS = ["de", "nl"]
-    FREEZE_ENCODER = False
+    TGTS = ["es", "pt"]
+    FREEZE_ENCODER = True
+elif VARIANT == 3:
+    BASE_MODEL = "facebook/nllb-200-distilled-600M"
+    SRC = "en"
+    SRC_ID = "eng_Latn"
+    TGTS = ["es", "pt"]
+    FREEZE_ENCODER = True
+elif VARIANT == 4:
+    BASE_MODEL = "facebook/nllb-200-distilled-600M"
+    SRC = "en"
+    SRC_ID = "eng_Latn"
+    TGTS = ["es", "pt"]
+    FREEZE_ENCODER = True
+elif VARIANT == 5:
+    BASE_MODEL = "facebook/nllb-200-distilled-600M"
+    SRC = "en"
+    SRC_ID = "eng_Latn"
+    TGTS = ["es", "pt"]
+    FREEZE_ENCODER = True
 
 
 TGT_IDS = [
@@ -89,10 +107,10 @@ def create_multituning_config(num_train_lines):
             "lexicon": {
                 TGTS[0]: {
                     "lang_code": TGT_IDS[0],
-                    "train": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/optimized_data/optimized_train_128.{TGTS[0]}",
-                    "dev": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/europarlData/dev.{TGTS[0]}",
-                    "test": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/europarlData/test.{TGTS[0]}",
-                    "permutation": 0,
+                    "train": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/train_tokenized/train.{TGTS[0]}_{TGTS[1]}_common_vocab",
+                    "dev": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/dev_tokenized/dev.{TGTS[0]}_{TGTS[1]}_common_vocab",
+                    "test": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/test_tokenized/test.{TGTS[0]}_{TGTS[1]}_common_vocab",
+                    "permutation": 1,
                 }
             }
         }
@@ -155,10 +173,10 @@ def create_shell_script(num_train_lines):
             "#SBATCH --gres=gpu:1",
         ]
     exp_config = config_dir / f"experiment3-{VARIANT}.multi.{num_train_lines}.json"
-    preface.append(f"python finetune.py --config {exp_config}")
+    preface.append(f"python finetune_dev.py --config {exp_config}")
     for tgt_index in range(1):
         exp_config = config_dir / f"experiment3-{VARIANT}.bi{tgt_index}.{num_train_lines}.json"
-        preface.append(f"python finetune.py --config {exp_config}",)
+        preface.append(f"python finetune_dev.py --config {exp_config}",)
     return "\n".join(preface)
 
 config_dir = Path(f"configs/exp3-{VARIANT}")

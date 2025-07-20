@@ -1,0 +1,51 @@
+exp  3-1 (en:0)
+    permutations:
+        en: 0
+        es: 1
+        pt: 1
+
+    bi0: en->es 
+    multi: en->es es->pt common vocab
+    dev_loss: evaluated only on europarl
+
+exp  3-2 (en:1)
+    permutations:
+        en: 1
+        es: 1
+        pt: 1
+
+    bi0: en->es 
+    multi: en->es es->pt common vocab
+    dev_loss: evaluated only on europarl
+
+exp  3-3 (en:2)
+    permutations:
+        en: 2
+        es: 1
+        pt: 1
+
+    bi0: en->es 
+    multi: en->es es->pt common vocab
+    dev_loss: evaluated only on europarl
+
+exp  3-4 (reversed)
+
+    permutations:
+        en: 0
+        es: 1
+        pt: 1
+
+    bi0: es->en
+    multi: es->en pt->es common vocab
+    dev_loss: evaluated only on europarl
+
+exp 3-5 (full dev_loss)
+
+    permutations:
+        en: 0
+        es: 1
+        pt: 1
+
+    bi0: en->es 
+    multi: en->es es->pt common vocab
+    dev_loss: evaluated only on the entire dev set

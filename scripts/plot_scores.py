@@ -2,7 +2,7 @@ import json
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-PREFIX = "exp2-4"
+PREFIX = "exp3-3"
 BASE_DIR = Path("experiments/") / PREFIX
 METRIC = "bleu"
 
@@ -39,7 +39,8 @@ for tuning, num_train_lines in sorted(results):
     for exp_dir in exp_dirs:
         scores = read_scores(exp_dir)
         if scores is not None:
-            score_avg = mean([scores[lang_pair][METRIC] for lang_pair in scores])
+            lang_pair = "eng_Latn->tsn_Latn"
+            score_avg = mean([scores[lang_pair][METRIC]])
             trial_scores.append(score_avg)
     ys[tuning].append(mean(trial_scores))
     
