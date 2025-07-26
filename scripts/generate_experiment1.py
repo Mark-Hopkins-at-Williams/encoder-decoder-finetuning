@@ -3,35 +3,32 @@ from pathlib import Path
 
 VARIANT = 4
 
+# defaults
+BASE_MODEL = "facebook/nllb-200-distilled-600M"
+DATA_DIR = "/mnt/storage/sotnichenko/encoder-decoder-finetuning/ENG_ZH"
+FREEZE_ENCODER = True
+FREEZE_DECODER = False
+SRC = "en"
+SRC_ID = "eng_Latn"
 
 if VARIANT == 1:
-    BASE_MODEL = "facebook/nllb-200-distilled-600M"
     FREEZE_ENCODER = False
-    SRC = "en"
-    SRC_ID = "eng_Latn"
-    TGTS = ["de"] * 2
-elif VARIANT == 2:
-    BASE_MODEL = "facebook/nllb-200-distilled-600M"
-    FREEZE_ENCODER = False
-    SRC = "en"
-    SRC_ID = "eng_Latn"
-    TGTS = ["es"] * 2
-elif VARIANT == 3:
-    BASE_MODEL = "experiments/eng-jpn-pretrained-v0/"
-    FREEZE_ENCODER = False
-    SRC = "en"
-    SRC_ID = "eng_Latn"
-    TGTS = ["es"] * 2
+    TGT = "de"
+    TGTS = [f'{TGT}{i}' for i in range(2)]
 elif VARIANT == 4:
-    BASE_MODEL = "experiments/eng-jpn-pretrained-v0/"
-    FREEZE_ENCODER = True
-    SRC = "en"
-    SRC_ID = "eng_Latn"
-    TGTS = ["es"] * 2
+    TGT = "zh"
+    TGTS = [f'{TGT}{i}' for i in range(2)]
+
+elif VARIANT == 5:
+    TGT = "sr"
+    TGTS = [f'{TGT}{i}' for i in range(2)]
+
+
 
 FT_PARAMS = {
     "base_model": BASE_MODEL,
     "freeze_encoder": FREEZE_ENCODER,
+    "freeze_decoder": FREEZE_DECODER,
     "batch_size": 64,
     "num_steps": 60000,
 }
@@ -56,24 +53,29 @@ TGT_IDS = [
 def create_bituning_config(num_train_lines, tgt_index):
     return {
         "model_dir": f"experiments/exp1-{VARIANT}/exp1-{VARIANT}-bi{tgt_index}-{num_train_lines}",
-        "corpora": {
-            SRC_ID: {
-                "train": f"data/train.{SRC}",
-                "dev": f"data/dev.{SRC}",
-                "test": f"data/test.{SRC}",
-                "permutation": 0,
-            },
-            TGT_IDS[tgt_index]: {
-                "train": f"data/train.{TGTS[tgt_index]}",
-                "dev": f"data/dev.{TGTS[tgt_index]}",
-                "test": f"data/test.{TGTS[tgt_index]}",
-                "permutation": 1,
-            },
+        "corpora": { 
+            "ENG_ZH": {
+                SRC: {
+                    "lang_code": SRC_ID,
+                    "train": f"{DATA_DIR}/train.{TGT}",
+                    "dev": f"{DATA_DIR}/dev.{TGT}",
+                    "test": f"{DATA_DIR}/test.{TGT}",
+                    "permutation": 0,
+                },
+                TGTS[tgt_index]: {
+                    "lang_code": TGT_IDS[tgt_index],
+                    "train": f"{DATA_DIR}/train.{TGT}",
+                    "dev": f"{DATA_DIR}/dev.{TGT}",
+                    "test": f"{DATA_DIR}/test.{TGT}",
+                    "permutation": 1,
+                }
+            }
         },
         "bitexts": [
             {
-                "src": SRC_ID,
-                "tgt": TGT_IDS[tgt_index],
+                "corpus": "ENG_ZH",
+                "src": SRC,
+                "tgt": TGTS[tgt_index],
                 "train_lines": [
                     tgt_index * num_train_lines,
                     tgt_index * num_train_lines + num_train_lines,
@@ -85,25 +87,41 @@ def create_bituning_config(num_train_lines, tgt_index):
 
 
 def create_multituning_config(num_train_lines):
-    corpora = {
-        SRC_ID: {
-            "train": f"data/train.{SRC}",
-            "dev": f"data/dev.{SRC}",
-            "test": f"data/test.{SRC}",
-            "permutation": 0,
+    corpora = { 
+        "ENG_ZH": {
+            SRC: {
+                "lang_code": SRC_ID,
+                "train": f"{DATA_DIR}/train.{TGT}",
+                "dev": f"{DATA_DIR}/dev.{TGT}",
+                "test": f"{DATA_DIR}/test.{TGT}",
+                "permutation": 0,
+            }
+        },
+        "ENG_ZH": {
+            SRC: {
+                "lang_code": SRC_ID,
+                "train": f"{DATA_DIR}/train.{TGT}",
+                "dev": f"{DATA_DIR}/dev.{TGT}",
+                "test": f"{DATA_DIR}/test.{TGT}",
+                "permutation": 0,
+            }
+
         }
+   
     }
     for tgt_index, tgt in enumerate(TGTS):
-        corpora[TGT_IDS[tgt_index]] = {
-            "train": f"data/train.{tgt}",
-            "dev": f"data/dev.{tgt}",
-            "test": f"data/test.{tgt}",
+        corpora[f"ENG_ZH"][TGTS[tgt_index]] = {
+            "lang_code": TGT_IDS[tgt_index],
+            "train": f"{DATA_DIR}/train.{TGT}",
+            "dev": f"{DATA_DIR}/dev.{TGT}",
+            "test": f"{DATA_DIR}/test.{TGT}",
             "permutation": 1 + tgt_index,
         }
     bitexts = [
         {
-            "src": SRC_ID,
-            "tgt": TGT_IDS[tgt_index],
+            "corpus": f"ENG_ZH",
+            "src": SRC,
+            "tgt": TGTS[tgt_index],
             "train_lines": [
                 tgt_index * num_train_lines,
                 tgt_index * num_train_lines + num_train_lines,
@@ -125,7 +143,6 @@ def create_shell_script(num_train_lines):
         "#SBATCH -c 1",
         "#SBATCH -t 3-12:00",
         "#SBATCH -p dl",
-        # "#SBATCH --mem=10G",
         "#SBATCH -o logs/log_%j.out",
         "#SBATCH -e logs/log_%j.err",
         "#SBATCH --gres=gpu:1",
@@ -144,7 +161,7 @@ def create_shell_script(num_train_lines):
 
 config_dir = Path(f"configs/exp1-{VARIANT}")
 config_dir.mkdir(parents=True, exist_ok=True)
-for num_train_lines in [1024, 2048, 4096, 8192, 16834]:
+for num_train_lines in [1024, 2048, 4096, 8192, 16384]:
     for tgt_index in range(len(TGTS)):
         config = create_bituning_config(num_train_lines, tgt_index)
         with open(

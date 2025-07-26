@@ -207,7 +207,21 @@ def main():
             lang_codes[(corpus, key)] = config['corpora'][corpus][key]['lang_code']
     
 
-    train_data = MixtureOfBitexts.create_from_config(config, "train", only_once_thru=False)    
+    train_data = MixtureOfBitexts.create_from_config(config, "train", only_once_thru=False)  
+
+    #EVAL_CORPUS = "europarl"
+    #filtered_config = {
+        #'corpora': config['corpora'],  
+        #'bitexts': [bt for bt in config['bitexts'] if bt['corpus'] == EVAL_CORPUS],
+        #"finetuning_parameters": {
+            #"base_model": "facebook/nllb-200-distilled-600M",
+            #"batch_size": 64,
+            #"num_steps": 60000,
+            #"freeze_encoder": True
+        #}
+   # }
+
+
     dev_data = MixtureOfBitexts.create_from_config(config, "dev", only_once_thru=False)
     model_name = params["base_model"]
     tokenizer = load_tokenizer(model_name)

@@ -1,31 +1,25 @@
 import json
 from pathlib import Path
 
-VARIANT = 4
+VARIANT = 2
 
-if VARIANT == 1:
+if VARIANT == 0:
     BASE_MODEL = "facebook/nllb-200-distilled-600M"
     SRC = "en"
     SRC_ID = "eng_Latn"
     TGTS = ["es", "pt"]
     FREEZE_ENCODER = False
+elif VARIANT == 1:
+    BASE_MODEL = "facebook/nllb-200-distilled-600M"
+    SRC = "en"
+    SRC_ID = "eng_Latn"
+    TGTS = ["sr", "bs"]
+    FREEZE_ENCODER = True
 elif VARIANT == 2:
     BASE_MODEL = "facebook/nllb-200-distilled-600M"
     SRC = "en"
     SRC_ID = "eng_Latn"
-    TGTS = ["de", "nl"]
-    FREEZE_ENCODER = False
-elif VARIANT == 3:
-    BASE_MODEL = "facebook/nllb-200-distilled-600M"
-    SRC = "en"
-    SRC_ID = "eng_Latn"
-    TGTS = ["es", "pt", "fr", "it"]
-    FREEZE_ENCODER = False
-elif VARIANT == 4:
-    BASE_MODEL = "facebook/nllb-200-distilled-600M"
-    SRC = "en"
-    SRC_ID = "eng_Latn"
-    TGTS = ["es", "pt"]
+    TGTS = ["zh", "jp"]
     FREEZE_ENCODER = True
 
 TGT_IDS = [
@@ -49,26 +43,26 @@ def create_bituning_config(num_train_lines, tgt_index):
     return {
         "model_dir": f"experiments/exp2-{VARIANT}/exp2-{VARIANT}-bi{tgt_index}-{num_train_lines}",
         "corpora": { 
-            "europarl": {
+            f"ENG_{TGTS[tgt_index]}": {
                 SRC: {
                     "lang_code": SRC_ID,
-                    "train": f"data/train.{SRC}",
-                    "dev": f"data/dev.{SRC}",
-                    "test": f"data/test.{SRC}",
+                    "train": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/ENG_{TGTS[tgt_index]}/train.{SRC}",
+                    "dev": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/ENG_{TGTS[tgt_index]}/dev.{SRC}",
+                    "test": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/ENG_{TGTS[tgt_index]}/test.{SRC}",
                     "permutation": 0,
                 },
                 TGTS[tgt_index]: {
                     "lang_code": TGT_IDS[tgt_index],
-                    "train": f"data/train.{TGTS[tgt_index]}",
-                    "dev": f"data/dev.{TGTS[tgt_index]}",
-                    "test": f"data/test.{TGTS[tgt_index]}",
+                    "train": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/ENG_{TGTS[tgt_index]}/train.{TGTS[tgt_index]}",
+                    "dev": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/ENG_{TGTS[tgt_index]}/dev.{TGTS[tgt_index]}",
+                    "test": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/ENG_{TGTS[tgt_index]}/test.{TGTS[tgt_index]}",
                     "permutation": 1,
                 },
             }
         },
         "bitexts": [
             {
-                "corpus": "europarl",
+                "corpus": f"ENG_{TGTS[tgt_index]}",
                 "src": SRC,
                 "tgt": TGTS[tgt_index],
                 "train_lines": [
@@ -88,27 +82,29 @@ def create_bituning_config(num_train_lines, tgt_index):
 
 def create_multituning_config(num_train_lines):
     corpora = { 
-            "europarl": {
-                SRC: {
-                    "lang_code": SRC_ID,
-                    "train": f"data/train.{SRC}",
-                    "dev": f"data/dev.{SRC}",
-                    "test": f"data/test.{SRC}",
-                    "permutation": 0,
-                }
-            }
+            "ENG_zh": {},
+            "ENG_jp": {}
         }
     for tgt_index, tgt in enumerate(TGTS):
-        corpora["europarl"][TGTS[tgt_index]] = {
-            "lang_code": TGT_IDS[tgt_index],
-            "train": f"data/train.{tgt}",
-            "dev": f"data/dev.{tgt}",
-            "test": f"data/test.{tgt}",
-            "permutation": 1,
+        corpora[f"ENG_{TGTS[tgt_index]}"] = {
+            SRC: {
+                "lang_code": SRC_ID,
+                "train": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/ENG_{TGTS[tgt_index]}/train.{SRC}",
+                    "dev": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/ENG_{TGTS[tgt_index]}/dev.{SRC}",
+                    "test": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/ENG_{TGTS[tgt_index]}/test.{SRC}",
+                "permutation": 0,
+            },
+            TGTS[tgt_index]: {
+                "lang_code": TGT_IDS[tgt_index],
+                "train": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/ENG_{TGTS[tgt_index]}/train.{TGTS[tgt_index]}",
+                "dev": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/ENG_{TGTS[tgt_index]}/dev.{TGTS[tgt_index]}",
+                "test": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/ENG_{TGTS[tgt_index]}/test.{TGTS[tgt_index]}",
+                "permutation": 1,
+            }
         }
     bitexts = [
         {
-            "corpus": "europarl",
+            "corpus": f"ENG_{TGTS[tgt_index]}",
             "src": SRC,
             "tgt": TGTS[tgt_index],
             "train_lines": [

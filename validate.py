@@ -21,7 +21,7 @@ def translate(
     b=3,
     num_beams=4,
     **kwargs
-):
+    ):
     model.eval()
     result = model.generate(
         **src_tokenized.to(model.device),

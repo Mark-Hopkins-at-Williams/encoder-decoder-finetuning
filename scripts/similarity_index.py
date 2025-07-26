@@ -6,7 +6,8 @@ model_name = "facebook/nllb-200-distilled-600M"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 def similarity_index (lang_code_list, tokenizer, filter_num):
-    OUT_DIR = Path(f"./pmi_lang_pairs_data_{filter_num}filtered")
+    print(f"Filter:{filter_num}")
+    OUT_DIR = Path(f"../pmi_lang_pairs_data/{filter_num}filtered")
     OUT_DIR.mkdir(exist_ok=True)
     LANGS = lang_code_list
     k=0
@@ -85,4 +86,4 @@ LANGS = [
     "pt", "ro", "sk", "sl", "sv", "en"
     ]
 
-result = similarity_index(LANGS, tokenizer, 0)
+result = similarity_index(LANGS, tokenizer, 500)
