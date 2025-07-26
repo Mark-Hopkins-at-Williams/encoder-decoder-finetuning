@@ -209,22 +209,20 @@ def main():
 
     train_data = MixtureOfBitexts.create_from_config(config, "train", only_once_thru=False)  
 
-    EVAL_CORPUS = "europarl"
-    filtered_config = {
-        'corpora': config['corpora'],  
-        'bitexts': [bt for bt in config['bitexts'] if bt['corpus'] == EVAL_CORPUS],
-        "finetuning_parameters": {
-            "base_model": "facebook/nllb-200-distilled-600M",
-            "batch_size": 64,
-            "num_steps": 60000,
-            "freeze_encoder": True
-        }
-    }
+    #EVAL_CORPUS = "europarl"
+    #filtered_config = {
+        #'corpora': config['corpora'],  
+        #'bitexts': [bt for bt in config['bitexts'] if bt['corpus'] == EVAL_CORPUS],
+        #"finetuning_parameters": {
+            #"base_model": "facebook/nllb-200-distilled-600M",
+            #"batch_size": 64,
+            #"num_steps": 60000,
+            #"freeze_encoder": True
+        #}
+   # }
 
-    if not filtered_config['bitexts']:
-        raise ValueError(f"No bitexts found for corpus '{EVAL_CORPUS}'")
 
-    dev_data = MixtureOfBitexts.create_from_config(filtered_config, "dev", only_once_thru=False)
+    dev_data = MixtureOfBitexts.create_from_config(config, "dev", only_once_thru=False)
     model_name = params["base_model"]
     tokenizer = load_tokenizer(model_name)
 

@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-VARIANT = 5
+VARIANT = 2
 
 if VARIANT == 1:
     BASE_MODEL = "facebook/nllb-200-distilled-600M"
@@ -105,12 +105,12 @@ def create_multituning_config(num_train_lines):
                 }
             },
             "lexicon": {
-                TGTS[0]: {
-                    "lang_code": TGT_IDS[0],
-                    "train": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/train_tokenized/train.{TGTS[0]}_{TGTS[1]}_common_vocab",
-                    "dev": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/dev_tokenized/dev.{TGTS[0]}_{TGTS[1]}_common_vocab",
-                    "test": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/test_tokenized/test.{TGTS[0]}_{TGTS[1]}_common_vocab",
-                    "permutation": 1,
+                SRC: {
+                    "lang_code": SRC_ID,
+                    "train": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/train_translation/train.{SRC}_common_vocab_translations_{TGTS[0]}_{TGTS[1]}_{num_train_lines}",
+                    "dev": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/dev_translation/dev.{SRC}_common_vocab_translations_{TGTS[0]}_{TGTS[1]}_{num_train_lines}",
+                    "test": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/test_translation/test.{SRC}_common_vocab_translations_{TGTS[0]}_{TGTS[1]}_{num_train_lines}",
+                    "permutation": 0,
                 }
             }
         }
@@ -124,9 +124,9 @@ def create_multituning_config(num_train_lines):
     }
     corpora["lexicon"][TGTS[1]] = {
         "lang_code": TGT_IDS[1],
-        "train": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/train_tokenized/train.{TGTS[0]}_{TGTS[1]}_common_vocab",
-        "dev": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/dev_tokenized/dev.{TGTS[0]}_{TGTS[1]}_common_vocab",
-        "test": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/test_tokenized/test.{TGTS[0]}_{TGTS[1]}_common_vocab",
+        "train": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/train_translation/train.{TGTS[0]}_{TGTS[1]}_common_vocab_translations_{SRC}_{num_train_lines}",
+        "dev": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/dev_translation/dev.{TGTS[0]}_{TGTS[1]}_common_vocab_translations_{SRC}_{num_train_lines}",
+        "test": f"/mnt/storage/sotnichenko/encoder-decoder-finetuning/scripts/common_vocab/test_translation/test.{TGTS[0]}_{TGTS[1]}_common_vocab_translations_{SRC}_{num_train_lines}",
         "permutation": 1,
     }
     bitexts = [
@@ -141,7 +141,7 @@ def create_multituning_config(num_train_lines):
         },
         {
             "corpus": "lexicon",
-            "src": TGTS[0],
+            "src": SRC,
             "tgt": TGTS[1],
             "train_lines": [
                 1 * num_train_lines,
@@ -173,15 +173,15 @@ def create_shell_script(num_train_lines):
             "#SBATCH --gres=gpu:1",
         ]
     exp_config = config_dir / f"experiment3-{VARIANT}.multi.{num_train_lines}.json"
-    preface.append(f"python finetune_dev.py --config {exp_config}")
+    preface.append(f"python finetune.py --config {exp_config}")
     for tgt_index in range(1):
         exp_config = config_dir / f"experiment3-{VARIANT}.bi{tgt_index}.{num_train_lines}.json"
-        preface.append(f"python finetune_dev.py --config {exp_config}",)
+        preface.append(f"python finetune.py --config {exp_config}",)
     return "\n".join(preface)
 
 config_dir = Path(f"configs/exp3-{VARIANT}")
 config_dir.mkdir(parents=True, exist_ok=True)
-for num_train_lines in [1024, 2048, 4096, 8192, 16834]:
+for num_train_lines in [1024, 2048, 4096, 8192, 16384]:
     for tgt_index in range(1):
         config = create_bituning_config(num_train_lines, tgt_index)
         with open(

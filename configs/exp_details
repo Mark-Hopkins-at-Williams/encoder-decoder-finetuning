@@ -1,51 +1,60 @@
-exp  3-1 (en:0)
+exp  1-4 (zh/jp)
+    permutations:
+        en: 0
+        zh0: 1
+        zh1: 1
+    bi0: en->zh0
+    bi1: en->zh1
+    multi: en->zh0 en->zh1
+    dev_loss: evaluated only on all corpora
+
+exp  1-5 (EC40 sr/bs)
+    permutations:
+        en: 0
+        sr0: 1
+        sr1: 1
+    bi0: en->sr0
+    bi1: en->sr1
+    multi: en->sr0 en->sr1
+    dev_loss: evaluated only on all corpora
+
+exp  2-1 (EC40 sr/bs)
+    permutations:
+        en: 0
+        sr: 1
+        bs: 1
+    bi0: en->sr
+    bi1: en->bs
+    multi: en->sr en->bs
+    dev_loss: evaluated only on all corpora
+
+exp  2-2 (zh/jp)
+    permutations:
+        en: 0
+        zh: 1
+        jp: 1
+    bi0: en->zh
+    bi1: en->jp
+    multi: en->zh en->jp
+    dev_loss: evaluated only on all corpora
+
+exp  3-1 (token-level common vocab)
     permutations:
         en: 0
         es: 1
         pt: 1
 
     bi0: en->es 
-    multi: en->es es->pt common vocab
+    multi: en->es en->pt common vocab
     dev_loss: evaluated only on europarl
 
-exp  3-2 (en:1)
+exp  3-2 (word-level common vocab)
     permutations:
         en: 1
         es: 1
         pt: 1
-
     bi0: en->es 
-    multi: en->es es->pt common vocab
+    multi: en->es en->pt common vocab
     dev_loss: evaluated only on europarl
 
-exp  3-3 (en:2)
-    permutations:
-        en: 2
-        es: 1
-        pt: 1
 
-    bi0: en->es 
-    multi: en->es es->pt common vocab
-    dev_loss: evaluated only on europarl
-
-exp  3-4 (reversed)
-
-    permutations:
-        en: 0
-        es: 1
-        pt: 1
-
-    bi0: es->en
-    multi: es->en pt->es common vocab
-    dev_loss: evaluated only on europarl
-
-exp 3-5 (full dev_loss)
-
-    permutations:
-        en: 0
-        es: 1
-        pt: 1
-
-    bi0: en->es 
-    multi: en->es es->pt common vocab
-    dev_loss: evaluated only on the entire dev set
