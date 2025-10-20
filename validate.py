@@ -1,14 +1,9 @@
-import argparse
 import evaluate
-import json
 import matplotlib
 matplotlib.use("Agg")
-from pathlib import Path
-from transformers import AutoModelForSeq2SeqLM
 
 from configure import USE_CUDA
-from corpora import MixtureOfBitexts, TokenizedMixtureOfBitexts, load_tokenizer
-from permutations import load_permutation_map
+
 
 
 def translate(
@@ -25,7 +20,7 @@ def translate(
     model.eval()
     result = model.generate(
         **src_tokenized.to(model.device),
-        forced_bos_token_id=tokenizer.convert_tokens_to_ids(tgt_lang),
+        forced_bos_token_id=tokenizer.get_special_tokens()[tgt_lang],
         max_new_tokens=int(a + b * src_tokenized.input_ids.shape[1]),
         num_beams=num_beams,
         **kwargs
@@ -33,7 +28,7 @@ def translate(
     result = result.to('cpu')
     if permutation is not None:
         result.apply_(permutation.get_inverse())
-    return tokenizer.batch_decode(result, skip_special_tokens=True)
+    return tokenizer.batch_decode(result)
 
 
 def translate_tokenized_mixture_of_bitexts(mix, model, tokenizer, lang_codes, pmap):         

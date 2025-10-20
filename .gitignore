@@ -1,6 +1,7 @@
 __pycache__
 configs/
 data/
+document/*.pdf
 examples/model-*
 experiments/
 logs/

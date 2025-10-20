@@ -1,0 +1,44 @@
+\documentclass[twoside]{report}
+\usepackage[top=1in, bottom=1in, left=1.5in, right=1in, includehead]{geometry}
+\pagestyle{headings}
+\usepackage{setspace}
+
+\usepackage{amsmath, amsthm, amstext, amssymb, amsfonts}
+\usepackage{rotating}
+\usepackage{color}
+\usepackage{float}
+\usepackage{wasysym}
+\usepackage{algorithmicx}
+\usepackage[chapter, plain]{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{listings}
+\usepackage{empheq}
+\usepackage{multicol}
+\usepackage{xparse}
+\usepackage{subfigure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Thesis body           %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Front matter          %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%\include{title}
+%\tableofcontents
+%\listoffigures
+%\listoftables
+\onehalfspacing
+
+\include{chapter1}
+
+
+%%%%%%%% References %%%%%%%%%%
+\bibliographystyle{acm}
+\bibliography{references,anthology}
+%%%%%%%% End References %%%%%%
+
+\end{document}

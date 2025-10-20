@@ -17,15 +17,14 @@ from transformers import (
     AutoConfig,
     get_constant_schedule_with_warmup,
 )
-
 from configure import USE_CUDA
-from corpora import MixtureOfBitexts, TokenizedMixtureOfBitexts, load_tokenizer
+from corpora import MixtureOfBitexts, TokenizedMixtureOfBitexts
 from permutations import (
     create_random_permutation_with_fixed_points,
     save_permutation_map,
 )
 from validate import translate_tokenized_mixture_of_bitexts, evaluate_translations
-
+from tokenization import NllbTokenizer, HuggingfaceTokenizer
 
 def cleanup():
     gc.collect()
@@ -90,9 +89,9 @@ def finetune(
     base_model: str,
     model_dir: str,
     training_steps: int,
-    report_every: int = 500,
-    validate_every: int = 500,
-    patience: int = 5,
+    report_every: int,
+    validate_every: int,
+    patience: int,
     freeze_decoder: bool = False,
     freeze_encoder: bool = False,
     should_finetune: bool = True
@@ -155,7 +154,7 @@ def finetune(
             train_plot_y.append(avg_train_loss)
             sys.stdout.flush()
 
-        if i % validate_every == 0:
+        if i > 0 and i % validate_every == 0:
             print("Validating...")
             dev_loss = evaluate(model, dev_data)
             print(f"Dev loss: {dev_loss:.4f}")
@@ -197,6 +196,9 @@ def main():
     all_corpora = config["corpora"]
     params = config["finetuning_parameters"]
     should_finetune = params["finetune"] if "finetune" in params else True
+    report_every = params["report_every"] if "report_every" in params else 500
+    validate_every = params["validate_every"] if "validate_every" in params else 500
+    patience = params["patience"] if "patience" else 1000000000
     
     # Create unique model directory
     base_dir = config["model_dir"]
@@ -216,8 +218,13 @@ def main():
     train_data = MixtureOfBitexts.create_from_config(config, "train", only_once_thru=False)    
     dev_data = MixtureOfBitexts.create_from_config(config, "dev", only_once_thru=False)
     model_name = params["base_model"]
-    tokenizer = load_tokenizer(model_name)
-
+    if model_name == "facebook/nllb-200-distilled-600M":   
+        tokenizer = NllbTokenizer("600M", max_length=128) # set max length?
+    elif model_name == "facebook/nllb-200-distilled-1.3B": 
+        tokenizer = NllbTokenizer("1.3B", max_length=128)
+    else:
+        tokenizer = HuggingfaceTokenizer(model_name, max_length=128)
+        
     # Create the permutations
     permutations = dict()
     pmap = dict()
@@ -228,17 +235,17 @@ def main():
                 if permutation_index not in permutations:
                     permutations[permutation_index] = (
                         create_random_permutation_with_fixed_points(
-                            len(tokenizer), tokenizer.all_special_ids
+                            len(tokenizer), list(tokenizer.get_special_tokens().values())
                         )
                     )
                 pmap[(corpus, language)] = permutations[permutation_index]
         
     save_permutation_map(pmap, Path(model_dir) / "permutations.json")
     tokenized_train = TokenizedMixtureOfBitexts(
-        train_data, tokenizer, max_length=128, lang_codes=lang_codes, permutation_map=pmap
+        train_data, tokenizer, lang_codes=lang_codes, permutation_map=pmap
     )
     tokenized_dev = TokenizedMixtureOfBitexts(
-        dev_data, tokenizer, max_length=128, lang_codes=lang_codes, permutation_map=pmap
+        dev_data, tokenizer, lang_codes=lang_codes, permutation_map=pmap
     )
     finetune(
         tokenized_train,
@@ -248,11 +255,14 @@ def main():
         params['num_steps'],
         freeze_decoder=params['freeze_decoder'] if 'freeze_decoder' in params else False,
         freeze_encoder=params['freeze_encoder'] if 'freeze_encoder' in params else False,        
-        should_finetune=should_finetune
+        should_finetune=should_finetune,
+        report_every=report_every,
+        validate_every=validate_every,
+        patience=patience
     )
 
     test_data = MixtureOfBitexts.create_from_config(config, "test", only_once_thru=True)    
-    tokenized_test = TokenizedMixtureOfBitexts(test_data, tokenizer, max_length=128, lang_codes=lang_codes, permutation_map=pmap)
+    tokenized_test = TokenizedMixtureOfBitexts(test_data, tokenizer, lang_codes=lang_codes, permutation_map=pmap)
     model = AutoModelForSeq2SeqLM.from_pretrained(model_dir)
     if USE_CUDA:
         model.cuda()
