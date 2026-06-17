@@ -1,0 +1,53 @@
+{
+    "model_dir": "examples/model-heatmap",
+    "finetuning_parameters": {
+        "base_model": "facebook/nllb-200-distilled-600M",        
+        "finetune": false,
+        "freeze_encoder": false,
+        "freeze_decoder": false,
+        "batch_size": 1,
+        "num_steps": 2000
+    },
+    "corpora": {
+        "seed": {
+            "eng": {
+                "lang_code": "eng_Latn",
+                "train": "test_files/lang1.txt",
+                "dev": "test_files/lang1.txt",
+                "test": "test_files/lang1.txt",
+                "permutation": 0
+            },
+            "fra": {
+                "lang_code": "fra_Latn",
+                "train": "test_files/lang2.txt",
+                "dev": "test_files/lang2.txt",
+                "test": "test_files/lang2.txt",
+                "permutation": 0
+            },
+            "deu": {
+                "lang_code": "deu_Latn",
+                "train": "test_files/lang3.txt",
+                "dev": "test_files/lang3.txt",
+                "test": "test_files/lang3.txt",
+                "permutation": 0
+            }
+        }
+    },
+    "bitexts": [
+        {
+            "corpus": "seed",
+            "src": "eng",
+            "tgt": "fra"
+        },
+        {
+            "corpus": "seed",
+            "src": "fra",
+            "tgt": "fra"
+        },
+        {
+            "corpus": "seed",
+            "src": "deu",
+            "tgt": "fra"
+        }
+    ]
+}
